@@ -1,0 +1,742 @@
+<title>Vision Camera TMC Accuracy — Baseline vs. 1st Calibration</title>
+<style>
+  .viz-root {
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --muted:          #898781;
+    --gridline:       #e1e0d9;
+    --baseline-axis:  #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6; /* Baseline — blue */
+    --series-2:       #1baf7a; /* 1st Calibration — aqua */
+    --good:           #0ca30c;
+    --critical:       #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    .viz-root {
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted:          #898781;
+      --gridline:       #2c2c2a;
+      --baseline-axis:  #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #199e70;
+      --good:           #0ca30c;
+      --critical:       #e66767;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted:          #898781;
+    --gridline:       #2c2c2a;
+    --baseline-axis:  #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #199e70;
+    --good:           #0ca30c;
+    --critical:       #e66767;
+  }
+  :root[data-theme="light"] .viz-root {
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --muted:          #898781;
+    --gridline:       #e1e0d9;
+    --baseline-axis:  #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;
+    --series-2:       #1baf7a;
+    --good:           #0ca30c;
+    --critical:       #d03b3b;
+  }
+
+  .viz-root {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    padding: 32px 20px 64px;
+    max-width: 1180px;
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+  .viz-root * { box-sizing: border-box; }
+
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .subtitle { color: var(--text-secondary); font-size: 0.95rem; margin: 0 0 28px; }
+
+  .callout {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--series-1);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+  }
+  .callout strong { color: var(--text-primary); }
+
+  .legend-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  section { margin-bottom: 40px; }
+  h2 { font-size: 1.1rem; margin: 0 0 14px; }
+  .section-note { color: var(--muted); font-size: 0.82rem; margin: -8px 0 16px; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+  .kpi-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .kpi-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; }
+  .kpi-values { display: flex; gap: 18px; }
+  .kpi-value-block { display: flex; flex-direction: column; }
+  .kpi-value { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi-group-name { font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
+  .kpi-value.s1 { color: var(--series-1); }
+  .kpi-value.s2 { color: var(--series-2); }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 800px) { .chart-grid { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px 10px;
+  }
+  .chart-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 2px; }
+  .chart-sub { font-size: 0.76rem; color: var(--muted); margin-bottom: 10px; }
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  .axis-label { fill: var(--muted); font-size: 10px; }
+  .tick-label { fill: var(--muted); font-size: 9px; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-line { stroke: var(--baseline-axis); stroke-width: 1; }
+  .ref-line { stroke: var(--critical); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .diag-line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  table.data-table th, table.data-table td {
+    text-align: left;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--gridline);
+  }
+  table.data-table th {
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  table.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .badge.pass { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+  .badge.fail { background: color-mix(in srgb, var(--critical) 18%, transparent); color: var(--critical); }
+
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--text-primary);
+    color: var(--surface-1);
+    font-size: 0.76rem;
+    padding: 6px 9px;
+    border-radius: 6px;
+    line-height: 1.4;
+    opacity: 0;
+    transition: opacity 0.08s ease;
+    z-index: 10;
+    max-width: 220px;
+  }
+
+  .tables-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 800px) { .tables-grid { grid-template-columns: 1fr; } }
+
+  .overview p { line-height: 1.6; font-size: 0.92rem; margin: 0 0 12px; }
+  .overview ul { margin: 0 0 12px; padding-left: 20px; font-size: 0.92rem; line-height: 1.6; }
+  .overview strong { color: var(--text-primary); }
+  .chart-caption { font-size: 0.78rem; color: var(--text-secondary); margin-top: 8px; }
+  .rot-label { fill: var(--muted); font-size: 8.5px; }
+</style>
+
+<div class="viz-root">
+  <h1>Vision Camera TMC Accuracy: Baseline vs. 1st Calibration</h1>
+  <p class="subtitle">Manual counts vs. Vision Camera turning-movement counts, compared across every intersection with recorded data — Hennepin County Transportation Operations.</p>
+
+  <section class="overview">
+    <h2>Project goal &amp; methodology</h2>
+    <p>
+      Hennepin County's Transportation Operations Department is rolling out a <strong>Vision Camera</strong>
+      system that automatically generates turning-movement counts (TMC) at signalized intersections — a task
+      traditionally done by a person standing at the intersection with a tally sheet. Before the county can
+      rely on the Vision Camera's counts, it needs to know how accurate they actually are. This project's goal
+      was to answer that question directly: <strong>manually count vehicles at a sample of intersections and
+      compare those manual counts against what the Vision Camera recorded for the same time window.</strong>
+    </p>
+    <p>
+      Manual counts were collected in 15-minute windows at each intersection and compared to the Vision
+      Camera's count for that same window, using two standard traffic-engineering accuracy metrics:
+    </p>
+    <ul>
+      <li><strong>% Difference</strong> — the plain relative error, (Vision − Manual) / Manual. Simple to read,
+        but treats a 2-vehicle error the same whether the intersection carries 10 vehicles or 1,000.</li>
+      <li><strong>GEH</strong> — a chi-squared-derived statistic used industry-wide (state DOTs, FHWA) to flag
+        meaningful count discrepancies. It weights the error by count magnitude, so it isn't fooled by a large
+        absolute gap on a high-volume intersection or an alarmed by a small absolute gap on a low-volume one.
+        <span id="geh-formula-note"></span></li>
+    </ul>
+    <p id="overview-counts">
+      <!-- filled in by JS with live counts -->
+    </p>
+  </section>
+
+  <div class="callout">
+    <strong>Methodology note:</strong> these are 15-minute interval counts, not hourly volumes. GEH scales with
+    √(volume) for a fixed relative error, so the conventional <strong>GEH&nbsp;&lt;&nbsp;5</strong> "good match"
+    threshold — calibrated against hourly counts — is not directly applicable to raw 15-minute totals: scaling
+    the same counts to an hourly-equivalent basis (×4 volume) roughly <strong>doubles</strong> every GEH value.
+    KPI tiles below report both the as-collected GEH and the hourly-equivalent GEH pass rate, rather than
+    applying the threshold to only one basis.
+  </div>
+
+  <div class="legend-row">
+    <span class="legend-item"><span class="swatch" style="background:var(--series-1)"></span>Baseline (n=48)</span>
+    <span class="legend-item"><span class="swatch" style="background:var(--series-2)"></span>1st Calibration (n=47)</span>
+  </div>
+
+  <section>
+    <h2>Summary</h2>
+    <div class="kpi-grid" id="kpi-grid"></div>
+  </section>
+
+  <section>
+    <h2>Manual vs. Vision Camera volume — did Vision over- or under-count?</h2>
+    <p class="section-note">
+      Each dot is one intersection. Its horizontal position is the manually counted Total for that 15-minute
+      window; its vertical position is the Vision Camera's Total for the <em>same</em> window. The dashed
+      diagonal is where a perfect match would fall (Vision = Manual). A dot <strong>below</strong> the line
+      means the Vision Camera undercounted that intersection; a dot <strong>above</strong> it means the Vision
+      Camera overcounted. Hover a dot for the intersection name and its exact counts.
+    </p>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">Baseline</div>
+        <div class="chart-sub">Manual Total (x-axis) vs. Vision Total (y-axis)</div>
+        <div id="scatter-baseline"></div>
+        <div class="chart-caption" id="caption-scatter-baseline"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">1st Calibration</div>
+        <div class="chart-sub">Manual Total (x-axis) vs. Vision Total (y-axis)</div>
+        <div id="scatter-calibration"></div>
+        <div class="chart-caption" id="caption-scatter-calibration"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>GEH by intersection</h2>
+    <p class="section-note">Sorted highest to lowest. Dashed line marks GEH = 5 (the conventional hourly-volume threshold, shown here on as-collected 15-minute GEH — see methodology note above).</p>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">Baseline</div>
+        <div id="bar-baseline"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">1st Calibration</div>
+        <div id="bar-calibration"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Progress at repeated intersections (same intersection, before &amp; after)</h2>
+    <p class="section-note" id="paired-intro"></p>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">GEH: Baseline → 1st Calibration</div>
+        <div class="chart-sub">5 intersections with the highest Baseline GEH (most in need of calibration)</div>
+        <div id="paired-geh"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">% Difference: Baseline → 1st Calibration</div>
+        <div class="chart-sub">Same 5 intersections</div>
+        <div id="paired-pctdiff"></div>
+      </div>
+    </div>
+    <table class="data-table" id="table-paired" style="margin-top:16px;"></table>
+  </section>
+
+  <section>
+    <h2>Distribution comparison</h2>
+    <p class="section-note">This compares the two rounds in aggregate across all intersections with data (not just the repeated intersections shown above) — so it is not a strict paired before/after, but a picture of overall accuracy in each round.</p>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">% Difference (Vision vs. Manual)</div>
+        <div id="box-pctdiff"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">GEH (as-collected, 15-min)</div>
+        <div id="box-geh"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Highest-GEH intersections (candidates for further calibration)</h2>
+    <div class="tables-grid">
+      <div class="chart-card">
+        <div class="chart-title">Baseline — top 5</div>
+        <table class="data-table" id="table-baseline"></table>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">1st Calibration — top 5</div>
+        <table class="data-table" id="table-calibration"></table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const DATA = {"Baseline": [{"ID": 8051900, "Intersection": "CSAH 109 (85th Ave N) at Edinbrook Pkwy N", "Date": "2025-06-10", "Time of Day": "07:45:00", "Manual_Total": 254, "Vision_Total": 405, "Pct_Diff": 0.594488188976378, "GEH_15min": 8.318580770747719, "GEH_Hourly_Equiv": 16.637161541495438}, {"ID": 8014800, "Intersection": "CSAH 136 (Silver Lake Rd) at 33rd Ave NE", "Date": "2025-03-31", "Time of Day": "07:45:00", "Manual_Total": 176, "Vision_Total": 290, "Pct_Diff": 0.6477272727272727, "GEH_15min": 7.468388315716769, "GEH_Hourly_Equiv": 14.936776631433538}, {"ID": 8002100, "Intersection": "CSAH 3 (Excelsior Blvd) at Brookside Ave / Alabama Ave S BACKHAUL", "Date": "2025-03-11", "Time of Day": "16:15:00", "Manual_Total": 469, "Vision_Total": 345, "Pct_Diff": -0.2643923240938166, "GEH_15min": 6.14645180399796, "GEH_Hourly_Equiv": 12.29290360799592}, {"ID": 9010690, "Intersection": "CSAH 121 (Maple Grove Pkwy) at Hospital Dr", "Date": "2025-06-12", "Time of Day": "08:30:00", "Manual_Total": 390, "Vision_Total": 505, "Pct_Diff": 0.2948717948717949, "GEH_15min": 5.436273781341253, "GEH_Hourly_Equiv": 10.872547562682506}, {"ID": 9010695, "Intersection": "CSAH 121 (Maple Grove Pkwy) at 99th Ave / Grove Cir", "Date": "2025-06-12", "Time of Day": "15:15:00", "Manual_Total": 658, "Vision_Total": 541, "Pct_Diff": -0.1778115501519757, "GEH_15min": 4.778496453589155, "GEH_Hourly_Equiv": 9.55699290717831}, {"ID": 8061200, "Intersection": "CSAH 61 (Flying Cloud Dr) at Viking Drive", "Date": "2026-02-24", "Time of Day": "15:30:00", "Manual_Total": 322, "Vision_Total": 250, "Pct_Diff": -0.2236024844720497, "GEH_15min": 4.257449251121395, "GEH_Hourly_Equiv": 8.51489850224279}, {"ID": 8037400, "Intersection": "CSAH 1 (Pioneer Trail) at Franlo Rd ", "Date": "2025-04-30", "Time of Day": "07:45:00", "Manual_Total": 308, "Vision_Total": 245, "Pct_Diff": -0.2045454545454545, "GEH_15min": 3.788724109742861, "GEH_Hourly_Equiv": 7.577448219485722}, {"ID": 8026100, "Intersection": "CSAH 152 (Brooklyn Blvd) at 65th Ave N", "Date": "3035-03-03", "Time of Day": "09:15:00", "Manual_Total": 476, "Vision_Total": 408, "Pct_Diff": -0.1428571428571428, "GEH_15min": 3.23443016025056, "GEH_Hourly_Equiv": 6.468860320501119}, {"ID": 8054100, "Intersection": "CSAH 19 (Manitou Rd) at Smithtown Rd", "Date": "2025-06-19", "Time of Day": "15:45:00", "Manual_Total": 368, "Vision_Total": 319, "Pct_Diff": -0.1331521739130435, "GEH_15min": 2.6438250266366268, "GEH_Hourly_Equiv": 5.2876500532732535}, {"ID": 8057895, "Intersection": "CSAH 81 (Industrial Blvd) at John Deere Ln", "Date": "2026-02-17", "Time of Day": "16:00:00", "Manual_Total": 310, "Vision_Total": 266, "Pct_Diff": -0.1419354838709677, "GEH_15min": 2.592724864350674, "GEH_Hourly_Equiv": 5.185449728701348}, {"ID": 8045400, "Intersection": "CSAH 130 (West Broadway) at 76th Ave N", "Date": "2025-06-13", "Time of Day": "15:00:00", "Manual_Total": 308, "Vision_Total": 354, "Pct_Diff": 0.1493506493506493, "GEH_15min": 2.5283886656748384, "GEH_Hourly_Equiv": 5.056777331349677}, {"ID": 8054900, "Intersection": "CSAH 28 (E Bush Lake Rd) at American Blvd / Green Valley Dr", "Date": "2025-06-24", "Time of Day": "08:00:00", "Manual_Total": 356, "Vision_Total": 312, "Pct_Diff": -0.1235955056179775, "GEH_15min": 2.4075728827241645, "GEH_Hourly_Equiv": 4.815145765448329}, {"ID": 8058010, "Intersection": "CSAH 73 (Hopkins Crossroad) at Wayzata Blvd / North Frontage Road", "Date": "2026-03-09", "Time of Day": "16:00:00", "Manual_Total": 391, "Vision_Total": 346, "Pct_Diff": -0.1150895140664961, "GEH_15min": 2.3441951748178047, "GEH_Hourly_Equiv": 4.688390349635609}, {"ID": 8037100, "Intersection": "CSAH 103 (West Broadway) at Dragon Star Supermarket/Rainbow Foods Driveway", "Date": "2025-06-09", "Time of Day": "16:00:00", "Manual_Total": 421, "Vision_Total": 375, "Pct_Diff": -0.1092636579572446, "GEH_15min": 2.3057716527385934, "GEH_Hourly_Equiv": 4.611543305477187}, {"ID": 9010660, "Intersection": "CSAH 61 (Zachary Ln N) at 89th Ave N", "Date": "2026-02-26", "Time of Day": "15:00:00", "Manual_Total": 342, "Vision_Total": 302, "Pct_Diff": -0.1169590643274853, "GEH_15min": 2.2291128503014117, "GEH_Hourly_Equiv": 4.458225700602823}, {"ID": 8027600, "Intersection": "CSAH 17 (France Ave) at I-494 N Ramp / 78th St", "Date": "2026-04-03", "Time of Day": "07:45:00", "Manual_Total": 647, "Vision_Total": 594, "Pct_Diff": -0.0819165378670788, "GEH_15min": 2.1276734616448056, "GEH_Hourly_Equiv": 4.255346923289611}, {"ID": 8057890, "Intersection": "CSAH 81 (Main St) at John Milless Dr / Industrial Blvd", "Date": "2026-03-06", "Time of Day": "08:00:00", "Manual_Total": 454, "Vision_Total": 411, "Pct_Diff": -0.0947136563876652, "GEH_15min": 2.0676422583876835, "GEH_Hourly_Equiv": 4.135284516775367}, {"ID": 8057800, "Intersection": "CSAH 61 (Flying Cloud Dr) at Charlson Rd", "Date": "2026-02-24", "Time of Day": "15:00:00", "Manual_Total": 136, "Vision_Total": 114, "Pct_Diff": -0.1617647058823529, "GEH_15min": 1.9677398201998149, "GEH_Hourly_Equiv": 3.9354796403996297}, {"ID": 8030800, "Intersection": "CSAH 28 (E Bush Lake Rd) at 78th St W ", "Date": "2025-04-04", "Time of Day": "19:45:00", "Manual_Total": 284, "Vision_Total": 318, "Pct_Diff": 0.1197183098591549, "GEH_15min": 1.9597274201943988, "GEH_Hourly_Equiv": 3.9194548403887977}, {"ID": 8036600, "Intersection": "CSAH 15 (Lynwood Blvd) at CSAH 110 (Commerce Blvd)", "Date": "2025-04-18", "Time of Day": "07:45:00", "Manual_Total": 433, "Vision_Total": 396, "Pct_Diff": -0.0854503464203233, "GEH_15min": 1.8173536879266257, "GEH_Hourly_Equiv": 3.6347073758532513}, {"ID": 8049100, "Intersection": "CSAH 101 (County Rd 101) at Hutchins Dr", "Date": "2025-06-09", "Time of Day": "12:30:00", "Manual_Total": 354, "Vision_Total": 324, "Pct_Diff": -0.0847457627118644, "GEH_15min": 1.6293763397807053, "GEH_Hourly_Equiv": 3.2587526795614106}, {"ID": 8052400, "Intersection": "CSAH 61 (Northwest Blvd) at W Medicine Lake Dr", "Date": "2026-02-26", "Time of Day": "08:00:00", "Manual_Total": 208, "Vision_Total": 186, "Pct_Diff": -0.1057692307692307, "GEH_15min": 1.567435099734012, "GEH_Hourly_Equiv": 3.134870199468024}, {"ID": 8056450, "Intersection": "CSAH 130 (Elm Creek Blvd) at Fountains Dr-BACKHAUL", "Date": "2025-06-13", "Time of Day": "07:45:00", "Manual_Total": 214, "Vision_Total": 193, "Pct_Diff": -0.0981308411214953, "GEH_15min": 1.4720992381888414, "GEH_Hourly_Equiv": 2.9441984763776827}, {"ID": 9010810, "Intersection": "CSAH 103 (West Broadway) at Oak Grove Pkwy", "Date": "2025-06-10", "Time of Day": "15:00:00", "Manual_Total": 252, "Vision_Total": 268, "Pct_Diff": 0.0634920634920634, "GEH_15min": 0.9922778767136676, "GEH_Hourly_Equiv": 1.9845557534273357}, {"ID": 8052000, "Intersection": "CSAH 1 (Pioneer Trail) at Staring Lake Parkway", "Date": "2025-06-04", "Time of Day": "08:30:00", "Manual_Total": 176, "Vision_Total": 164, "Pct_Diff": -0.0681818181818181, "GEH_15min": 0.9203579866168444, "GEH_Hourly_Equiv": 1.840715973233689}, {"ID": 8059100, "Intersection": "CR 101 (Brockton Ln) at Dayton Parkway", "Date": "2025-03-04", "Time of Day": "08:45:00", "Manual_Total": 207, "Vision_Total": 194, "Pct_Diff": -0.0628019323671497, "GEH_15min": 0.9180919170103832, "GEH_Hourly_Equiv": 1.8361838340207663}, {"ID": 8058015, "Intersection": "CSAH 73 (Hopkins Crossroad) at S Frontage Rd", "Date": "2026-03-03", "Time of Day": "15:00:00", "Manual_Total": 282, "Vision_Total": 267, "Pct_Diff": -0.0531914893617021, "GEH_15min": 0.9053574604251852, "GEH_Hourly_Equiv": 1.8107149208503703}, {"ID": 8059010, "Intersection": "CSAH 81 (Bottineau) at 35th Ave/HyVee", "Date": "2026-03-09", "Time of Day": "08:00:00", "Manual_Total": 413, "Vision_Total": 431, "Pct_Diff": 0.0435835351089588, "GEH_15min": 0.8762262903202239, "GEH_Hourly_Equiv": 1.7524525806404478}, {"ID": 8025300, "Intersection": "CSAH 130 (West Broadway) at 73rd Ave N", "Date": "2025-04-02", "Time of Day": "07:45:00", "Manual_Total": 174, "Vision_Total": 185, "Pct_Diff": 0.0632183908045977, "GEH_15min": 0.8210327079482835, "GEH_Hourly_Equiv": 1.642065415896567}, {"ID": 8051400, "Intersection": "CSAH 1 (Pioneer Trail) at Dell Rd", "Date": "2025-04-29", "Time of Day": "08:15:00", "Manual_Total": 190, "Vision_Total": 179, "Pct_Diff": -0.0578947368421052, "GEH_15min": 0.8098311912155414, "GEH_Hourly_Equiv": 1.6196623824310827}, {"ID": 8032700, "Intersection": "CSAH 153 (Kenzie Ter) at Kenzington Apts", "Date": "2025-04-07", "Time of Day": "12:45:00", "Manual_Total": 81, "Vision_Total": 74, "Pct_Diff": -0.0864197530864197, "GEH_15min": 0.7951465679458907, "GEH_Hourly_Equiv": 1.5902931358917811}, {"ID": 8039900, "Intersection": "CSAH 27 (Stinson Blvd NE) at 37th Ave NE", "Date": "2025-06-23", "Time of Day": "15:45:00", "Manual_Total": 308, "Vision_Total": 296, "Pct_Diff": -0.0389610389610389, "GEH_15min": 0.6905224051781231, "GEH_Hourly_Equiv": 1.3810448103562465}, {"ID": 8057900, "Intersection": "CSAH 81 (Industrial Blvd) at John Milless Dr / Memorial Dr", "Date": "2026-03-04", "Time of Day": "15:00:00", "Manual_Total": 158, "Vision_Total": 166, "Pct_Diff": 0.050632911392405, "GEH_15min": 0.6285393610547089, "GEH_Hourly_Equiv": 1.2570787221094175}, {"ID": 8042600, "Intersection": "CSAH 152 (Brooklyn Blvd) at Jolly Lane", "Date": "2025-03-07", "Time of Day": "08:30:00", "Manual_Total": 242, "Vision_Total": 233, "Pct_Diff": -0.0371900826446281, "GEH_15min": 0.5839971160707451, "GEH_Hourly_Equiv": 1.1679942321414902}, {"ID": 8035100, "Intersection": "CSAH 101 (Central Ave) at Wayzata Blvd - Master Controller", "Date": "2025-06-05", "Time of Day": "15:00:00", "Manual_Total": 625, "Vision_Total": 639, "Pct_Diff": 0.0224, "GEH_15min": 0.556890098923011, "GEH_Hourly_Equiv": 1.113780197846022}, {"ID": 8052100, "Intersection": "CSAH 1 (Pioneer Trail) at Bennett Place", "Date": "2025-04-25", "Time of Day": "07:45:00", "Manual_Total": 273, "Vision_Total": 264, "Pct_Diff": -0.0329670329670329, "GEH_15min": 0.5492503779276181, "GEH_Hourly_Equiv": 1.0985007558552362}, {"ID": 8057965, "Intersection": "CSAH 144 (141st Ave N) at Northdale Blvd", "Date": "2025-06-18", "Time of Day": "15:45:00", "Manual_Total": 353, "Vision_Total": 343, "Pct_Diff": -0.0283286118980169, "GEH_15min": 0.5360562674188974, "GEH_Hourly_Equiv": 1.072112534837795}, {"ID": 8031700, "Intersection": "CSAH 15 (Shoreline Dr) at CSAH 51 (Sunset Dr)", "Date": "2025-06-19", "Time of Day": "12:45:00", "Manual_Total": 369, "Vision_Total": 360, "Pct_Diff": -0.024390243902439, "GEH_15min": 0.4714045207910317, "GEH_Hourly_Equiv": 0.9428090415820634}, {"ID": 8048400, "Intersection": "CSAH 8 (West Broadway) at 57th Ave N", "Date": "2026-03-03", "Time of Day": "07:30:00", "Manual_Total": 125, "Vision_Total": 120, "Pct_Diff": -0.04, "GEH_15min": 0.4517539514526256, "GEH_Hourly_Equiv": 0.9035079029052512}, {"ID": 8033150, "Intersection": "CSAH 25 (Hwy 7) at Lynn Ave", "Date": "2025-06-23", "Time of Day": "07:45:00", "Manual_Total": 429, "Vision_Total": 420, "Pct_Diff": -0.0209790209790209, "GEH_15min": 0.436821154304661, "GEH_Hourly_Equiv": 0.8736423086093221}, {"ID": 8051500, "Intersection": "CSAH 24 (County Rd 24) at Medina Rd", "Date": "2025-06-20", "Time of Day": "15:00:00", "Manual_Total": 255, "Vision_Total": 250, "Pct_Diff": -0.0196078431372549, "GEH_15min": 0.3146583877637763, "GEH_Hourly_Equiv": 0.6293167755275526}, {"ID": 8037300, "Intersection": "CSAH 1 (Pioneer Trail) at Homeward Hills Rd", "Date": "2025-05-01", "Time of Day": "07:45:00", "Manual_Total": 380, "Vision_Total": 374, "Pct_Diff": -0.0157894736842105, "GEH_15min": 0.3090157215747628, "GEH_Hourly_Equiv": 0.6180314431495256}, {"ID": 8052900, "Intersection": "CSAH 130 (77th Ave N) at Boone Ave N", "Date": "2025-06-12", "Time of Day": "12:45:00", "Manual_Total": 166, "Vision_Total": 170, "Pct_Diff": 0.0240963855421686, "GEH_15min": 0.3086066999241838, "GEH_Hourly_Equiv": 0.6172133998483676}, {"ID": 8057970, "Intersection": "CSAH 144 (141st Ave N) at James Rd/Rogers Dr", "Date": "2025-06-16", "Time of Day": "12:45:00", "Manual_Total": 397, "Vision_Total": 391, "Pct_Diff": -0.0151133501259445, "GEH_15min": 0.302275633115927, "GEH_Hourly_Equiv": 0.6045512662318541}, {"ID": 8052300, "Intersection": "CSAH 110 (Commerce Blvd) at Sunnyfield Rd E", "Date": "2025-06-11", "Time of Day": "12:15:00", "Manual_Total": 256, "Vision_Total": 253, "Pct_Diff": -0.01171875, "GEH_15min": 0.1880517422421668, "GEH_Hourly_Equiv": 0.3761034844843336}, {"ID": 8048500, "Intersection": "CSAH 1 (Pioneer Trail) at Mitchell Rd", "Date": "2025-06-04", "Time of Day": "15:15:00", "Manual_Total": 273, "Vision_Total": 270, "Pct_Diff": -0.0109890109890109, "GEH_15min": 0.1820691387103213, "GEH_Hourly_Equiv": 0.3641382774206426}, {"ID": 8055800, "Intersection": "CSAH 144 (141st Ave N) at Rogers High School W Entr", "Date": "2025-06-19", "Time of Day": "07:45:00", "Manual_Total": 157, "Vision_Total": 159, "Pct_Diff": 0.0127388535031847, "GEH_15min": 0.159111456835146, "GEH_Hourly_Equiv": 0.318222913670292}, {"ID": 8054600, "Intersection": "CSAH 73 (Hopkins Crossroad) at Minnetonka Mills Rd / 5th St N", "Date": "2026-02-27", "Time of Day": "07:45:00", "Manual_Total": 269, "Vision_Total": 268, "Pct_Diff": -0.0037174721189591, "GEH_15min": 0.0610278197697353, "GEH_Hourly_Equiv": 0.1220556395394706}], "1st Calibration": [{"ID": 8029100, "Intersection": "CSAH 10 (Bass Lake Rd) at Sherburne Ave", "Date": "2026-01-12", "Time of Day": "15:30:00", "Manual_Total": 691, "Vision_Total": 428, "Pct_Diff": -0.3806078147612156, "GEH_15min": 11.118743282828994, "GEH_Hourly_Equiv": 22.23748656565799}, {"ID": 8021000, "Intersection": "CSAH 10 (Bass Lake Rd) at Regent Ave", "Date": "2026-01-12", "Time of Day": "15:00:00", "Manual_Total": 305, "Vision_Total": 141, "Pct_Diff": -0.5377049180327869, "GEH_15min": 10.98225229499177, "GEH_Hourly_Equiv": 21.96450458998354}, {"ID": 8048500, "Intersection": "CSAH 1 (Pioneer Trail) at Mitchell Rd", "Date": "2025-12-30", "Time of Day": "15:15:00", "Manual_Total": 200, "Vision_Total": 125, "Pct_Diff": -0.375, "GEH_15min": 5.883484054145521, "GEH_Hourly_Equiv": 11.766968108291042}, {"ID": 8022400, "Intersection": "CSAH 1 (Old Shakopee Rd) at Xerxes Ave S", "Date": "2025-07-07", "Time of Day": "15:00:00", "Manual_Total": 477, "Vision_Total": 363, "Pct_Diff": -0.2389937106918239, "GEH_15min": 5.562630415806639, "GEH_Hourly_Equiv": 11.12526083161328}, {"ID": 8057300, "Intersection": "CSAH 1 (Pioneer Trail) at CSAH 61 (Flying Cloud Dr)", "Date": "2025-12-26", "Time of Day": "08:00:00", "Manual_Total": 187, "Vision_Total": 262, "Pct_Diff": 0.4010695187165775, "GEH_15min": 5.005564831994999, "GEH_Hourly_Equiv": 10.011129663989998}, {"ID": 8018400, "Intersection": "CSAH 1 (Old Shakopee Rd) at CSAH 34 (Normandale Blvd)", "Date": "2025-07-03", "Time of Day": "12:45:00", "Manual_Total": 699, "Vision_Total": 593, "Pct_Diff": -0.1516452074391988, "GEH_15min": 4.170514219432559, "GEH_Hourly_Equiv": 8.341028438865118}, {"ID": 8026700, "Intersection": "CSAH 152 (Brooklyn Blvd) at 73rd Ave N / Regent Ave", "Date": "2026-06-16", "Time of Day": "15:00:00", "Manual_Total": 542, "Vision_Total": 474, "Pct_Diff": -0.1254612546125461, "GEH_15min": 3.017012132014787, "GEH_Hourly_Equiv": 6.034024264029574}, {"ID": 8014800, "Intersection": "CSAH 136 (Silver Lake Rd) at 33rd Ave NE", "Date": "2026-02-20", "Time of Day": "8:00AM", "Manual_Total": 222, "Vision_Total": 180, "Pct_Diff": -0.1891891891891892, "GEH_15min": 2.9624515866061127, "GEH_Hourly_Equiv": 5.9249031732122255}, {"ID": 8038800, "Intersection": "CSAH 10 (Bass Lake Rd) at Nathan Ln", "Date": "2025-07-07", "Time of Day": "07:45:00", "Manual_Total": 576, "Vision_Total": 525, "Pct_Diff": -0.0885416666666666, "GEH_15min": 2.17365950422944, "GEH_Hourly_Equiv": 4.34731900845888}, {"ID": 8020600, "Intersection": "CSAH 5 (Minnetonka Blvd) at CSAH 16 (McGinty Rd W)", "Date": "2026-04-28", "Time of Day": "08:00:00", "Manual_Total": 515, "Vision_Total": 472, "Pct_Diff": -0.0834951456310679, "GEH_15min": 1.935641287407278, "GEH_Hourly_Equiv": 3.871282574814556}, {"ID": 8054100, "Intersection": "CSAH 19 (Manitou Rd) at Smithtown Rd", "Date": "2026-03-30", "Time of Day": "15:00:00", "Manual_Total": 242, "Vision_Total": 216, "Pct_Diff": -0.1074380165289256, "GEH_15min": 1.7181283611832334, "GEH_Hourly_Equiv": 3.436256722366467}, {"ID": 8005700, "Intersection": "CSAH 17 (France Ave) at 65th St W", "Date": "2026-03-30", "Time of Day": "07:45:00", "Manual_Total": 472, "Vision_Total": 440, "Pct_Diff": -0.0677966101694915, "GEH_15min": 1.4985372985307104, "GEH_Hourly_Equiv": 2.9970745970614208}, {"ID": 8045400, "Intersection": "CSAH 130 (West Broadway) at 76th Ave N", "Date": "2026-02-23", "Time of Day": "15:00:00", "Manual_Total": 295, "Vision_Total": 270, "Pct_Diff": -0.0847457627118644, "GEH_15min": 1.487410293271824, "GEH_Hourly_Equiv": 2.974820586543648}, {"ID": 8057890, "Intersection": "CSAH 81 (Main St) at John Milless Dr / Industrial Blvd", "Date": "2026-03-13", "Time of Day": "08:00:00", "Manual_Total": 405, "Vision_Total": 433, "Pct_Diff": 0.0691358024691358, "GEH_15min": 1.367889512488888, "GEH_Hourly_Equiv": 2.7357790249777763}, {"ID": 8008400, "Intersection": "CSAH 1 (Old Shakopee Rd) at CSAH 17 (France Ave)", "Date": "2025-07-08", "Time of Day": "12:45:00", "Manual_Total": 521, "Vision_Total": 552, "Pct_Diff": 0.0595009596928982, "GEH_15min": 1.3383719645066712, "GEH_Hourly_Equiv": 2.6767439290133423}, {"ID": 8024100, "Intersection": "CSAH 10 (Bass Lake Rd) at Zachary Ln BACKHAUL", "Date": "2026-01-08", "Time of Day": "07:45:00", "Manual_Total": 505, "Vision_Total": 535, "Pct_Diff": 0.0594059405940594, "GEH_15min": 1.3155870289605438, "GEH_Hourly_Equiv": 2.631174057921088}, {"ID": 8023800, "Intersection": "CSAH 5 (Minnetonka Blvd) at CSAH 61 W Jct (Plymouth Rd)", "Date": "2026-04-27", "Time of Day": "15:15:00", "Manual_Total": 396, "Vision_Total": 375, "Pct_Diff": -0.053030303030303, "GEH_15min": 1.0695648047665605, "GEH_Hourly_Equiv": 2.139129609533121}, {"ID": 8037200, "Intersection": "CSAH 1 (Pioneer Trail) at CSAH 4  (Eden Prairie Rd)", "Date": "2025-12-24", "Time of Day": "07:30:00", "Manual_Total": 113, "Vision_Total": 102, "Pct_Diff": -0.0973451327433628, "GEH_15min": 1.0609342087749067, "GEH_Hourly_Equiv": 2.121868417549813}, {"ID": 8051400, "Intersection": "CSAH 1 (Pioneer Trail) at Dell Rd", "Date": "2025-12-29", "Time of Day": "08:15:00", "Manual_Total": 105, "Vision_Total": 116, "Pct_Diff": 0.1047619047619047, "GEH_15min": 1.046433287139887, "GEH_Hourly_Equiv": 2.092866574279774}, {"ID": 8052700, "Intersection": "CSAH 10 (Bass Lake Rd) at Vicksburg Ln", "Date": "2026-01-14", "Time of Day": "11:45:00", "Manual_Total": 313, "Vision_Total": 295, "Pct_Diff": -0.0575079872204472, "GEH_15min": 1.032370802417528, "GEH_Hourly_Equiv": 2.064741604835056}, {"ID": 8052000, "Intersection": "CSAH 1 (Pioneer Trail) at Staring Lake Parkway", "Date": "2025-12-31", "Time of Day": "08:30:00", "Manual_Total": 93, "Vision_Total": 102, "Pct_Diff": 0.0967741935483871, "GEH_15min": 0.9114654303753, "GEH_Hourly_Equiv": 1.8229308607506}, {"ID": 8033400, "Intersection": "CSAH 88 (New Brighton Blvd) at CSAH 94 (29th Ave NE)", "Date": "2026-04-20", "Time of Day": "08:00:00", "Manual_Total": 292, "Vision_Total": 279, "Pct_Diff": -0.0445205479452054, "GEH_15min": 0.7693789430238368, "GEH_Hourly_Equiv": 1.5387578860476736}, {"ID": 8024800, "Intersection": "CSAH 9 (Rockford Rd) at Larch Ln BACKHAUL", "Date": "2026-04-17", "Time of Day": "15:00:00", "Manual_Total": 477, "Vision_Total": 461, "Pct_Diff": -0.0335429769392033, "GEH_15min": 0.7388113544633762, "GEH_Hourly_Equiv": 1.4776227089267524}, {"ID": 9010690, "Intersection": "CSAH 121 (Maple Grove Pkwy) at Hospital Dr", "Date": "2026-02-19", "Time of Day": "08:30:00", "Manual_Total": 339, "Vision_Total": 327, "Pct_Diff": -0.0353982300884955, "GEH_15min": 0.6575959492214292, "GEH_Hourly_Equiv": 1.3151918984428583}, {"ID": 8025900, "Intersection": "CSAH 152 (Brooklyn Blvd) at 55th Ave N", "Date": "2026-05-21", "Time of Day": "15:15:00", "Manual_Total": 520, "Vision_Total": 506, "Pct_Diff": -0.0269230769230769, "GEH_15min": 0.6181150999636871, "GEH_Hourly_Equiv": 1.2362301999273742}, {"ID": 8030800, "Intersection": "CSAH 28 (E Bush Lake Rd) at 78th St W ", "Date": "2026-03-30", "Time of Day": "16:00:00", "Manual_Total": 396, "Vision_Total": 408, "Pct_Diff": 0.0303030303030303, "GEH_15min": 0.5985056016645798, "GEH_Hourly_Equiv": 1.1970112033291596}, {"ID": 8040000, "Intersection": "CSAH 101 (Central Ave) at 14th Ave N - Master Controller", "Date": NaN, "Time of Day": NaN, "Manual_Total": 478, "Vision_Total": 491, "Pct_Diff": 0.0271966527196652, "GEH_15min": 0.5906041055515311, "GEH_Hourly_Equiv": 1.1812082111030622}, {"ID": 8052100, "Intersection": "CSAH 1 (Pioneer Trail) at Bennett Place", "Date": "2025-04-25", "Time of Day": "07:45:00", "Manual_Total": 273, "Vision_Total": 264, "Pct_Diff": -0.0329670329670329, "GEH_15min": 0.5492503779276181, "GEH_Hourly_Equiv": 1.0985007558552362}, {"ID": 8056000, "Intersection": "CSAH 10 (County Road 10) at CSAH 116 (Fletcher Ln)", "Date": "2026-01-09", "Time of Day": "08:30:00", "Manual_Total": 213, "Vision_Total": 206, "Pct_Diff": -0.0328638497652582, "GEH_15min": 0.4836219750974267, "GEH_Hourly_Equiv": 0.9672439501948534}, {"ID": 8026000, "Intersection": "CSAH 152 (Brooklyn Blvd) at 63rd Ave N", "Date": "2026-05-22", "Time of Day": "08:30:00", "Manual_Total": 385, "Vision_Total": 394, "Pct_Diff": 0.0233766233766233, "GEH_15min": 0.4560251327443259, "GEH_Hourly_Equiv": 0.912050265488652}, {"ID": 8037000, "Intersection": "CSAH 152 (Brooklyn Blvd) at Cub Foods Driveway", "Date": "2026-06-16", "Time of Day": "16:00:00", "Manual_Total": 476, "Vision_Total": 486, "Pct_Diff": 0.0210084033613445, "GEH_15min": 0.4559607525875532, "GEH_Hourly_Equiv": 0.9119215051751064}, {"ID": 8049100, "Intersection": "CSAH 101 (County Rd 101) at Hutchins Dr", "Date": "2026-03-18", "Time of Day": "15:00:00", "Manual_Total": 514, "Vision_Total": 504, "Pct_Diff": -0.0194552529182879, "GEH_15min": 0.4432422071779362, "GEH_Hourly_Equiv": 0.8864844143558724}, {"ID": 9010695, "Intersection": "CSAH 121 (Maple Grove Pkwy) at 99th Ave / Grove Cir", "Date": "2026-02-19", "Time of Day": "15:15:00", "Manual_Total": 574, "Vision_Total": 583, "Pct_Diff": 0.0156794425087108, "GEH_15min": 0.3741888374667286, "GEH_Hourly_Equiv": 0.7483776749334572}, {"ID": 8058010, "Intersection": "CSAH 73 (Hopkins Crossroad) at Wayzata Blvd / North Frontage Road", "Date": "2026-03-12", "Time of Day": "16:00:00", "Manual_Total": 437, "Vision_Total": 431, "Pct_Diff": -0.0137299771167048, "GEH_15min": 0.2880092164423916, "GEH_Hourly_Equiv": 0.5760184328847832}, {"ID": 8025600, "Intersection": "CSAH 10 (Bass Lake Rd) at CSAH 152 (Brooklyn Blvd) - Master Controller", "Date": "2026-01-13", "Time of Day": "08:30:00", "Manual_Total": 385, "Vision_Total": 380, "Pct_Diff": -0.0129870129870129, "GEH_15min": 0.2556549962824568, "GEH_Hourly_Equiv": 0.5113099925649136}, {"ID": 8038300, "Intersection": "CSAH 152 (Brooklyn Blvd) at Unity Ave N", "Date": "2026-06-17", "Time of Day": "16:00:00", "Manual_Total": 435, "Vision_Total": 430, "Pct_Diff": -0.0114942528735632, "GEH_15min": 0.2404235184171725, "GEH_Hourly_Equiv": 0.480847036834345}, {"ID": 8044600, "Intersection": "CSAH 1 (Old Shakopee Rd) at Nesbitt Ave", "Date": "2025-07-07", "Time of Day": "15:00:00", "Manual_Total": 471, "Vision_Total": 466, "Pct_Diff": -0.0106157112526539, "GEH_15min": 0.2310017163491287, "GEH_Hourly_Equiv": 0.4620034326982575}, {"ID": 8031600, "Intersection": "CSAH 10 (Bass Lake Rd) at Sycamore Ln / Prudential Bldg - Master Controller", "Date": "2026-01-06", "Time of Day": "12:45:00", "Manual_Total": 301, "Vision_Total": 305, "Pct_Diff": 0.0132890365448504, "GEH_15min": 0.2297939958485704, "GEH_Hourly_Equiv": 0.4595879916971409}, {"ID": 8057600, "Intersection": "CSAH 61 (Flying Cloud Dr) at Singletree Ln", "Date": "2026-04-14", "Time of Day": "16:00:00", "Manual_Total": 601, "Vision_Total": 596, "Pct_Diff": -0.0083194675540765, "GEH_15min": 0.2043797798283219, "GEH_Hourly_Equiv": 0.4087595596566438}, {"ID": 8026600, "Intersection": "CSAH 152 (Brooklyn Blvd) at Noble Ave / 71st Ave", "Date": "2026-06-17", "Time of Day": "08:00:00", "Manual_Total": 402, "Vision_Total": 406, "Pct_Diff": 0.0099502487562189, "GEH_15min": 0.1990074380419978, "GEH_Hourly_Equiv": 0.3980148760839956}, {"ID": 8057550, "Intersection": "CSAH 61 (Flying Cloud Dr) at Regional Center Rd", "Date": "2026-04-14", "Time of Day": "15:00:00", "Manual_Total": 431, "Vision_Total": 428, "Pct_Diff": -0.0069605568445475, "GEH_15min": 0.1447570321960142, "GEH_Hourly_Equiv": 0.2895140643920285}, {"ID": 8051900, "Intersection": "CSAH 109 (85th Ave N) at Edinbrook Pkwy N", "Date": "2026-02-20", "Time of Day": "08:30:00", "Manual_Total": 209, "Vision_Total": 211, "Pct_Diff": 0.0095693779904306, "GEH_15min": 0.1380131118684708, "GEH_Hourly_Equiv": 0.2760262237369417}, {"ID": 8033300, "Intersection": "CSAH 88 (New Brighton Blvd) at St Anthony Blvd", "Date": "2026-05-04", "Time of Day": "08:00:00", "Manual_Total": 431, "Vision_Total": 429, "Pct_Diff": -0.0046403712296983, "GEH_15min": 0.0964485644340824, "GEH_Hourly_Equiv": 0.1928971288681648}, {"ID": 8037300, "Intersection": "CSAH 1 (Pioneer Trail) at Homeward Hills Rd", "Date": "2025-12-29", "Time of Day": "08:30:00", "Manual_Total": 223, "Vision_Total": 222, "Pct_Diff": -0.0044843049327354, "GEH_15min": 0.067040152315399, "GEH_Hourly_Equiv": 0.1340803046307981}, {"ID": 8026100, "Intersection": "CSAH 152 (Brooklyn Blvd) at 65th Ave N", "Date": "2026-05-22", "Time of Day": "15:15:00", "Manual_Total": 621, "Vision_Total": 620, "Pct_Diff": -0.001610305958132, "GEH_15min": 0.040144782295185, "GEH_Hourly_Equiv": 0.08028956459037}, {"ID": 8026800, "Intersection": "CSAH 152 (Brooklyn Blvd / Osseo Rd) at 49th Ave N BACKHAUL", "Date": "2026-05-21", "Time of Day": "07:15:00", "Manual_Total": 226, "Vision_Total": 226, "Pct_Diff": 0.0, "GEH_15min": 0.0, "GEH_Hourly_Equiv": 0.0}, {"ID": 9010720, "Intersection": "CSAH 30 (93rd Ave) at CSAH 121 (Maple Grove Pkwy)", "Date": "2026-03-24", "Time of Day": "12:15:00", "Manual_Total": 585, "Vision_Total": 585, "Pct_Diff": 0.0, "GEH_15min": 0.0, "GEH_Hourly_Equiv": 0.0}]};
+const STATS = {"Baseline": {"n_intersections": 48, "mean_pct_diff": -0.020992057138578935, "median_pct_diff": -0.03948051948051948, "mean_abs_pct_diff": 0.10792198862310513, "mean_geh_15min": 1.851204311272128, "median_geh_15min": 0.9563179316652561, "mean_geh_hourly": 3.702408622544256, "median_geh_hourly": 1.9126358633305123, "pct_pass_geh5_15min": 91.66666666666666, "pct_pass_geh5_hourly": 77.08333333333334}, "1st Calibration": {"n_intersections": 47, "mean_pct_diff": -0.04251052154001571, "median_pct_diff": -0.012987012987012988, "mean_abs_pct_diff": 0.08255397410783856, "mean_geh_15min": 1.6069919413421998, "median_geh_15min": 0.6575959492214292, "mean_geh_hourly": 3.2139838826843996, "median_geh_hourly": 1.3151918984428583, "pct_pass_geh5_15min": 89.36170212765957, "pct_pass_geh5_hourly": 82.97872340425532}};
+
+const GROUPS = [
+  { key: "Baseline", label: "Baseline", colorVar: "--series-1", cls: "s1" },
+  { key: "1st Calibration", label: "1st Calibration", colorVar: "--series-2", cls: "s2" },
+];
+
+function cssVar(name) {
+  return getComputedStyle(document.querySelector(".viz-root")).getPropertyValue(name).trim();
+}
+
+const tooltip = document.getElementById("tooltip");
+function showTooltip(evt, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.left = (evt.clientX + 14) + "px";
+  tooltip.style.top = (evt.clientY + 14) + "px";
+  tooltip.style.opacity = 1;
+}
+function hideTooltip() { tooltip.style.opacity = 0; }
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function fmtPct(v) { return (v * 100).toFixed(1) + "%"; }
+function fmtNum(v, d) { return v.toFixed(d === undefined ? 2 : d); }
+function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+const TOTAL_INTERSECTIONS_STUDIED = 236; // total intersection rows tracked in the workbook
+
+// Intersections with data recorded in BOTH Baseline and 1st Calibration — enables a direct before/after view
+function getPairedIntersections() {
+  const calibById = new Map(DATA["1st Calibration"].map(r => [r.ID, r]));
+  const pairs = [];
+  DATA["Baseline"].forEach(b => {
+    const c = calibById.get(b.ID);
+    if (c) pairs.push({ id: b.ID, name: b.Intersection, Baseline: b, "1st Calibration": c });
+  });
+  return pairs;
+}
+
+// ---------- Project overview text ----------
+function renderOverview() {
+  document.getElementById("overview-counts").innerHTML =
+    `Of the <strong>${TOTAL_INTERSECTIONS_STUDIED} intersections</strong> tracked in the county's TMC workbook, ` +
+    `manual counts were collected and compared for <strong>${STATS["Baseline"].n_intersections} intersections in the Baseline round</strong> ` +
+    `and <strong>${STATS["1st Calibration"].n_intersections} intersections after the 1st Calibration</strong> adjustment. ` +
+    `<strong>${getPairedIntersections().length} of those intersections were measured in both rounds</strong>, which lets us look ` +
+    `directly at whether calibration improved accuracy at the same locations (see "Progress at repeated intersections" below), ` +
+    `in addition to the overall Baseline vs. 1st Calibration comparison across all measured intersections.`;
+  document.getElementById("geh-formula-note").innerHTML =
+    ` Formula: GEH = √(2·(Vision − Manual)² / (Vision + Manual)). Industry convention treats GEH&nbsp;&lt;&nbsp;5 ` +
+    `(on hourly volumes) as a good match — see the methodology note below on why that threshold needs care here.`;
+}
+
+// ---------- KPI tiles ----------
+function renderKPIs() {
+  const grid = document.getElementById("kpi-grid");
+  const tiles = [
+    { label: "Intersections with data", get: s => s.n_intersections.toFixed(0) },
+    { label: "Mean |% Difference|", get: s => fmtPct(s.mean_abs_pct_diff) },
+    { label: "Mean GEH (as-collected)", get: s => fmtNum(s.mean_geh_15min) },
+    { label: "% GEH<5 (hourly-equivalent)", get: s => s.pct_pass_geh5_hourly.toFixed(0) + "%" },
+  ];
+  tiles.forEach(t => {
+    const tile = document.createElement("div");
+    tile.className = "kpi-tile";
+    let valuesHtml = "";
+    GROUPS.forEach(g => {
+      valuesHtml += `<div class="kpi-value-block">
+        <div class="kpi-value ${g.cls}">${t.get(STATS[g.key])}</div>
+        <div class="kpi-group-name">${g.label}</div>
+      </div>`;
+    });
+    tile.innerHTML = `<div class="kpi-label">${t.label}</div><div class="kpi-values">${valuesHtml}</div>`;
+    grid.appendChild(tile);
+  });
+}
+
+// ---------- Scatter chart ----------
+function renderScatter(containerId, groupKey, colorVar) {
+  const rows = DATA[groupKey];
+  const allVals = [];
+  DATA["Baseline"].forEach(r => { allVals.push(r.Manual_Total, r.Vision_Total); });
+  DATA["1st Calibration"].forEach(r => { allVals.push(r.Manual_Total, r.Vision_Total); });
+  const maxVal = Math.max(...allVals) * 1.08;
+
+  const W = 420, H = 320, M = { t: 12, r: 16, b: 34, l: 40 };
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+  const x = v => M.l + (v / maxVal) * iw;
+  const y = v => M.t + ih - (v / maxVal) * ih;
+
+  const svg = svgEl("svg", { class: "chart", viewBox: `0 0 ${W} ${H}` });
+
+  // gridlines + ticks
+  const nTicks = 5;
+  for (let i = 0; i <= nTicks; i++) {
+    const v = (maxVal / nTicks) * i;
+    svg.appendChild(svgEl("line", { class: "gridline", x1: M.l, x2: W - M.r, y1: y(v), y2: y(v) }));
+    const t = svgEl("text", { class: "tick-label", x: M.l - 6, y: y(v) + 3, "text-anchor": "end" });
+    t.textContent = Math.round(v);
+    svg.appendChild(t);
+    const tx = svgEl("text", { class: "tick-label", x: x(v), y: H - M.b + 14, "text-anchor": "middle" });
+    tx.textContent = Math.round(v);
+    svg.appendChild(tx);
+  }
+  svg.appendChild(svgEl("line", { class: "axis-line", x1: M.l, x2: M.l, y1: M.t, y2: H - M.b }));
+  svg.appendChild(svgEl("line", { class: "axis-line", x1: M.l, x2: W - M.r, y1: H - M.b, y2: H - M.b }));
+
+  // 1:1 line
+  svg.appendChild(svgEl("line", { class: "diag-line", x1: x(0), y1: y(0), x2: x(maxVal), y2: y(maxVal) }));
+
+  // points
+  rows.forEach(r => {
+    const c = svgEl("circle", {
+      cx: x(r.Manual_Total), cy: y(r.Vision_Total), r: 4.5,
+      fill: cssVar(colorVar), stroke: cssVar("--surface-1"), "stroke-width": 1,
+      style: "cursor:pointer"
+    });
+    c.addEventListener("mousemove", e => showTooltip(e,
+      `<strong>${r.Intersection}</strong><br>Manual: ${r.Manual_Total} · Vision: ${r.Vision_Total}<br>% Diff: ${fmtPct(r.Pct_Diff)} · GEH: ${fmtNum(r.GEH_15min)}`));
+    c.addEventListener("mouseleave", hideTooltip);
+    svg.appendChild(c);
+  });
+
+  const labelX = svgEl("text", { class: "axis-label", x: M.l + iw / 2, y: H - 4, "text-anchor": "middle" });
+  labelX.textContent = "Manual Total";
+  svg.appendChild(labelX);
+  const labelY = svgEl("text", { class: "axis-label", x: -(M.t + ih / 2), y: 12, "text-anchor": "middle", transform: "rotate(-90)" });
+  labelY.textContent = "Vision Total";
+  svg.appendChild(labelY);
+
+  // "perfect match" annotation on the 1:1 line
+  const midV = maxVal * 0.62;
+  const diagLabel = svgEl("text", {
+    class: "rot-label", x: x(midV) + 6, y: y(midV) - 6, "text-anchor": "start",
+    transform: `rotate(-45 ${x(midV) + 6} ${y(midV) - 6})`
+  });
+  diagLabel.textContent = "Vision = Manual (perfect match)";
+  svg.appendChild(diagLabel);
+
+  document.getElementById(containerId).appendChild(svg);
+
+  const bias = STATS[groupKey].mean_pct_diff;
+  const dir = bias < 0 ? "lower than (undercounted)" : "higher than (overcounted)";
+  const caption = document.getElementById("caption-" + containerId);
+  if (caption) caption.textContent = `On average, Vision's Total was ${fmtPct(Math.abs(bias))} ${dir} the manual count in ${groupKey}.`;
+}
+
+// ---------- Sorted bar chart (GEH) ----------
+function renderBar(containerId, groupKey, colorVar) {
+  const rows = [...DATA[groupKey]].sort((a, b) => b.GEH_15min - a.GEH_15min);
+  const maxVal = Math.max(5.5, ...rows.map(r => r.GEH_15min)) * 1.08;
+
+  const W = 420, H = 320, M = { t: 12, r: 16, b: 34, l: 32 };
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+  const barW = iw / rows.length;
+  const y = v => M.t + ih - (v / maxVal) * ih;
+
+  const svg = svgEl("svg", { class: "chart", viewBox: `0 0 ${W} ${H}` });
+
+  const nTicks = 5;
+  for (let i = 0; i <= nTicks; i++) {
+    const v = (maxVal / nTicks) * i;
+    svg.appendChild(svgEl("line", { class: "gridline", x1: M.l, x2: W - M.r, y1: y(v), y2: y(v) }));
+    const t = svgEl("text", { class: "tick-label", x: M.l - 6, y: y(v) + 3, "text-anchor": "end" });
+    t.textContent = fmtNum(v, 1);
+    svg.appendChild(t);
+  }
+  svg.appendChild(svgEl("line", { class: "axis-line", x1: M.l, x2: M.l, y1: M.t, y2: H - M.b }));
+  svg.appendChild(svgEl("line", { class: "axis-line", x1: M.l, x2: W - M.r, y1: H - M.b, y2: H - M.b }));
+
+  rows.forEach((r, i) => {
+    const bx = M.l + i * barW;
+    const bh = ih - (y(r.GEH_15min) - M.t);
+    const rect = svgEl("rect", {
+      x: bx + barW * 0.12, y: y(r.GEH_15min), width: Math.max(barW * 0.76, 1), height: Math.max(bh, 0),
+      fill: cssVar(colorVar), rx: 2, style: "cursor:pointer"
+    });
+    rect.addEventListener("mousemove", e => showTooltip(e,
+      `<strong>${r.Intersection}</strong><br>GEH: ${fmtNum(r.GEH_15min)} · % Diff: ${fmtPct(r.Pct_Diff)}<br>Manual: ${r.Manual_Total} · Vision: ${r.Vision_Total}`));
+    rect.addEventListener("mouseleave", hideTooltip);
+    svg.appendChild(rect);
+  });
+
+  svg.appendChild(svgEl("line", { class: "ref-line", x1: M.l, x2: W - M.r, y1: y(5), y2: y(5) }));
+  const refLabel = svgEl("text", { class: "tick-label", x: W - M.r, y: y(5) - 4, "text-anchor": "end", fill: cssVar("--critical") });
+  refLabel.textContent = "GEH = 5";
+  svg.appendChild(refLabel);
+
+  const labelY = svgEl("text", { class: "axis-label", x: -(M.t + ih / 2), y: 12, "text-anchor": "middle", transform: "rotate(-90)" });
+  labelY.textContent = "GEH";
+  svg.appendChild(labelY);
+  const labelX = svgEl("text", { class: "axis-label", x: M.l + iw / 2, y: H - 4, "text-anchor": "middle" });
+  labelX.textContent = rows.length + " intersections, sorted";
+  svg.appendChild(labelX);
+
+  document.getElementById(containerId).appendChild(svg);
+}
+
+// ---------- Box plot ----------
+function quantile(sorted, q) {
+  const pos = (sorted.length - 1) * q;
+  const base = Math.floor(pos), rest = pos - base;
+  return sorted[base + 1] !== undefined ? sorted[base] + rest * (sorted[base + 1] - sorted[base]) : sorted[base];
+}
+function boxStats(values) {
+  const s = [...values].sort((a, b) => a - b);
+  const q1 = quantile(s, 0.25), med = quantile(s, 0.5), q3 = quantile(s, 0.75);
+  const iqr = q3 - q1;
+  const lo = Math.max(s[0], q1 - 1.5 * iqr), hi = Math.min(s[s.length - 1], q3 + 1.5 * iqr);
+  return { min: s[0], q1, med, q3, max: s[s.length - 1], lo, hi };
+}
+
+function renderBoxPlot(containerId, valueKey, isPercent) {
+  const seriesData = GROUPS.map(g => ({
+    ...g,
+    stats: boxStats(DATA[g.key].map(r => r[valueKey]))
+  }));
+  const allBoundsVals = seriesData.flatMap(s => [s.stats.lo, s.stats.hi, s.stats.min, s.stats.max]);
+  let minV = Math.min(...allBoundsVals), maxV = Math.max(...allBoundsVals);
+  const pad = (maxV - minV) * 0.15 || 1;
+  minV -= pad; maxV += pad;
+
+  const W = 420, H = 200, M = { t: 12, r: 16, b: 30, l: 46 };
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+  const y = v => M.t + ih - ((v - minV) / (maxV - minV)) * ih;
+  const boxW = 70;
+  const centers = [M.l + iw * 0.3, M.l + iw * 0.7];
+
+  const svg = svgEl("svg", { class: "chart", viewBox: `0 0 ${W} ${H}` });
+
+  const nTicks = 4;
+  for (let i = 0; i <= nTicks; i++) {
+    const v = minV + ((maxV - minV) / nTicks) * i;
+    svg.appendChild(svgEl("line", { class: "gridline", x1: M.l, x2: W - M.r, y1: y(v), y2: y(v) }));
+    const t = svgEl("text", { class: "tick-label", x: M.l - 6, y: y(v) + 3, "text-anchor": "end" });
+    t.textContent = isPercent ? (v * 100).toFixed(0) + "%" : v.toFixed(1);
+    svg.appendChild(t);
+  }
+  if (minV < 0 && maxV > 0) {
+    svg.appendChild(svgEl("line", { class: "axis-line", x1: M.l, x2: W - M.r, y1: y(0), y2: y(0) }));
+  } else {
+    svg.appendChild(svgEl("line", { class: "axis-line", x1: M.l, x2: M.l, y1: M.t, y2: H - M.b }));
+  }
+
+  seriesData.forEach((s, i) => {
+    const cx = centers[i];
+    const color = cssVar(s.colorVar);
+    const st = s.stats;
+    // whiskers
+    svg.appendChild(svgEl("line", { x1: cx, x2: cx, y1: y(st.hi), y2: y(st.q3), stroke: color, "stroke-width": 1.5 }));
+    svg.appendChild(svgEl("line", { x1: cx, x2: cx, y1: y(st.lo), y2: y(st.q1), stroke: color, "stroke-width": 1.5 }));
+    svg.appendChild(svgEl("line", { x1: cx - 14, x2: cx + 14, y1: y(st.hi), y2: y(st.hi), stroke: color, "stroke-width": 1.5 }));
+    svg.appendChild(svgEl("line", { x1: cx - 14, x2: cx + 14, y1: y(st.lo), y2: y(st.lo), stroke: color, "stroke-width": 1.5 }));
+    // box
+    const boxTop = y(st.q3), boxBottom = y(st.q1);
+    const box = svgEl("rect", {
+      x: cx - boxW / 2, y: boxTop, width: boxW, height: Math.max(boxBottom - boxTop, 1),
+      fill: color, "fill-opacity": 0.22, stroke: color, "stroke-width": 1.5, rx: 3, style: "cursor:pointer"
+    });
+    box.addEventListener("mousemove", e => showTooltip(e,
+      `<strong>${s.label}</strong><br>Median: ${isPercent ? fmtPct(st.med) : fmtNum(st.med)}<br>Q1–Q3: ${isPercent ? fmtPct(st.q1) : fmtNum(st.q1)} – ${isPercent ? fmtPct(st.q3) : fmtNum(st.q3)}`));
+    box.addEventListener("mouseleave", hideTooltip);
+    svg.appendChild(box);
+    // median
+    svg.appendChild(svgEl("line", { x1: cx - boxW / 2, x2: cx + boxW / 2, y1: y(st.med), y2: y(st.med), stroke: color, "stroke-width": 2.5 }));
+    // label
+    const lbl = svgEl("text", { class: "tick-label", x: cx, y: H - 8, "text-anchor": "middle" });
+    lbl.textContent = s.label;
+    svg.appendChild(lbl);
+  });
+
+  document.getElementById(containerId).appendChild(svg);
+}
+
+// ---------- Paired before/after bars (repeated intersections) ----------
+function renderPairedBars(containerId, items, valueFn, opts) {
+  opts = opts || {};
+  const values = items.flatMap(it => GROUPS.map(g => valueFn(it[g.key])));
+  let minV = opts.allowNegative ? Math.min(0, ...values) : 0;
+  let maxV = Math.max(opts.refLine || 0, ...values);
+  maxV *= 1.15;
+  if (minV < 0) minV *= 1.15;
+
+  const W = 420, H = 320, M = { t: 12, r: 16, b: 64, l: 36 };
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+  const y = v => M.t + ih - ((v - minV) / (maxV - minV)) * ih;
+  const y0 = y(0);
+  const groupW = iw / items.length;
+  const barW = groupW * 0.32;
+
+  const svg = svgEl("svg", { class: "chart", viewBox: `0 0 ${W} ${H}` });
+
+  const nTicks = 5;
+  for (let i = 0; i <= nTicks; i++) {
+    const v = minV + ((maxV - minV) / nTicks) * i;
+    svg.appendChild(svgEl("line", { class: "gridline", x1: M.l, x2: W - M.r, y1: y(v), y2: y(v) }));
+    const t = svgEl("text", { class: "tick-label", x: M.l - 6, y: y(v) + 3, "text-anchor": "end" });
+    t.textContent = opts.isPercent ? (v * 100).toFixed(0) + "%" : v.toFixed(1);
+    svg.appendChild(t);
+  }
+  svg.appendChild(svgEl("line", { class: "axis-line", x1: M.l, x2: W - M.r, y1: y0, y2: y0 }));
+
+  items.forEach((it, i) => {
+    const cx = M.l + i * groupW + groupW / 2;
+    GROUPS.forEach((g, gi) => {
+      const val = valueFn(it[g.key]);
+      const bx = cx + (gi === 0 ? -barW - 2 : 2);
+      const top = Math.min(y(val), y0), h = Math.abs(y(val) - y0);
+      const rect = svgEl("rect", {
+        x: bx, y: top, width: barW, height: Math.max(h, 0.5),
+        fill: cssVar(g.colorVar), rx: 2, style: "cursor:pointer"
+      });
+      rect.addEventListener("mousemove", e => showTooltip(e,
+        `<strong>${it.name}</strong><br>${g.label}: ${opts.isPercent ? fmtPct(val) : fmtNum(val)}`));
+      rect.addEventListener("mouseleave", hideTooltip);
+      svg.appendChild(rect);
+    });
+    const labelY = H - M.b + 12;
+    const lbl = svgEl("text", {
+      class: "rot-label", x: cx, y: labelY, "text-anchor": "end",
+      transform: `rotate(-35 ${cx} ${labelY})`
+    });
+    lbl.textContent = truncate(it.name, 24);
+    svg.appendChild(lbl);
+  });
+
+  if (opts.refLine) {
+    svg.appendChild(svgEl("line", { class: "ref-line", x1: M.l, x2: W - M.r, y1: y(opts.refLine), y2: y(opts.refLine) }));
+    const refLabel = svgEl("text", { class: "tick-label", x: W - M.r, y: y(opts.refLine) - 4, "text-anchor": "end", fill: cssVar("--critical") });
+    refLabel.textContent = "GEH = " + opts.refLine;
+    svg.appendChild(refLabel);
+  }
+
+  document.getElementById(containerId).appendChild(svg);
+}
+
+function renderPairedSection() {
+  const pairs = getPairedIntersections();
+  const top5 = [...pairs].sort((a, b) => b.Baseline.GEH_15min - a.Baseline.GEH_15min).slice(0, 5);
+
+  document.getElementById("paired-intro").textContent =
+    `${pairs.length} intersections have manual-vs-Vision comparisons recorded in both the Baseline and 1st `
+    + `Calibration rounds. The 5 shown below are the ones with the highest Baseline GEH — i.e. the intersections `
+    + `that most needed calibration — so the change from Baseline to 1st Calibration is easiest to see.`;
+
+  renderPairedBars("paired-geh", top5, r => r.GEH_15min, { refLine: 5 });
+  renderPairedBars("paired-pctdiff", top5, r => r.Pct_Diff, { isPercent: true, allowNegative: true });
+
+  const table = document.getElementById("table-paired");
+  table.innerHTML = `<thead><tr><th>Intersection</th><th class="num">Baseline GEH</th><th class="num">Calib. GEH</th>
+    <th class="num">Baseline % Diff</th><th class="num">Calib. % Diff</th></tr></thead>`;
+  const tbody = document.createElement("tbody");
+  [...pairs].sort((a, b) => b.Baseline.GEH_15min - a.Baseline.GEH_15min).forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${p.name}</td>
+      <td class="num">${fmtNum(p.Baseline.GEH_15min)}</td>
+      <td class="num">${fmtNum(p["1st Calibration"].GEH_15min)}</td>
+      <td class="num">${fmtPct(p.Baseline.Pct_Diff)}</td>
+      <td class="num">${fmtPct(p["1st Calibration"].Pct_Diff)}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+}
+
+// ---------- Worst-performer tables ----------
+function renderTable(containerId, groupKey) {
+  const rows = [...DATA[groupKey]].sort((a, b) => b.GEH_15min - a.GEH_15min).slice(0, 5);
+  const table = document.getElementById(containerId);
+  table.innerHTML = `<thead><tr><th>Intersection</th><th class="num">Manual</th><th class="num">Vision</th><th class="num">GEH</th></tr></thead>`;
+  const tbody = document.createElement("tbody");
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    const passBadge = r.GEH_15min < 5
+      ? `<span class="badge pass">pass</span>` : `<span class="badge fail">review</span>`;
+    tr.innerHTML = `<td>${r.Intersection}</td><td class="num">${r.Manual_Total}</td><td class="num">${r.Vision_Total}</td><td class="num">${fmtNum(r.GEH_15min)} ${passBadge}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+}
+
+renderOverview();
+renderKPIs();
+renderScatter("scatter-baseline", "Baseline", "--series-1");
+renderScatter("scatter-calibration", "1st Calibration", "--series-2");
+renderBar("bar-baseline", "Baseline", "--series-1");
+renderBar("bar-calibration", "1st Calibration", "--series-2");
+renderPairedSection();
+renderBoxPlot("box-pctdiff", "Pct_Diff", true);
+renderBoxPlot("box-geh", "GEH_15min", false);
+renderTable("table-baseline", "Baseline");
+renderTable("table-calibration", "1st Calibration");
+</script>

@@ -1,0 +1,26 @@
+{
+  "Baseline": {
+    "n_intersections": 48,
+    "mean_pct_diff": -0.020992057138578935,
+    "median_pct_diff": -0.03948051948051948,
+    "mean_abs_pct_diff": 0.10792198862310513,
+    "mean_geh_15min": 1.851204311272128,
+    "median_geh_15min": 0.9563179316652561,
+    "mean_geh_hourly": 3.702408622544256,
+    "median_geh_hourly": 1.9126358633305123,
+    "pct_pass_geh5_15min": 91.66666666666666,
+    "pct_pass_geh5_hourly": 77.08333333333334
+  },
+  "1st Calibration": {
+    "n_intersections": 47,
+    "mean_pct_diff": -0.04251052154001571,
+    "median_pct_diff": -0.012987012987012988,
+    "mean_abs_pct_diff": 0.08255397410783856,
+    "mean_geh_15min": 1.6069919413421998,
+    "median_geh_15min": 0.6575959492214292,
+    "mean_geh_hourly": 3.2139838826843996,
+    "median_geh_hourly": 1.3151918984428583,
+    "pct_pass_geh5_15min": 89.36170212765957,
+    "pct_pass_geh5_hourly": 82.97872340425532
+  }
+}
