@@ -58,7 +58,7 @@ def write_data_tab(wb, sheet_name, df, stats):
     chart.x_axis.title = "Intersection"
     chart.height, chart.width = 10, 24
     data_ref = Reference(ws, min_col=8, min_row=1, max_row=ws.max_row)
-    cats_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
+    cats_ref = Reference(ws, min_col=2, min_row=2, max_row=ws.max_row)
     chart.add_data(data_ref, titles_from_data=True)
     chart.set_categories(cats_ref)
     chart.legend = None
