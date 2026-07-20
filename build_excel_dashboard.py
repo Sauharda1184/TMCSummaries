@@ -171,7 +171,60 @@ def write_data_tab(wb, baseline_df, calib_df):
     return ws, baseline_block, calib_block, n_baseline, n_calib
 
 
-def add_geh_bar_chart(data_ws, dest_ws, title, first_row, last_row, anchor):
+CONSULTANT_TABLE_COLS = ["ID", "Intersection", "Date", "Time of Day", "Duration_Hours",
+                         "Consultant_Total", "Vision_Total", "Pct_Diff", "Abs_Pct_Diff", "GEH",
+                         "GEH_Hourly_Rate"]
+
+
+def write_consultant_data_tab(wb, consultant_df):
+    ws = wb.create_sheet("Consultant Data")
+    ws.append(CONSULTANT_TABLE_COLS)
+    style_header(ws, len(CONSULTANT_TABLE_COLS))
+
+    recs = consultant_df.to_dict(orient="records")
+    recs.sort(key=lambda r: geh(r["Consultant_Total"], r["Vision_Total"]), reverse=True)
+
+    for r in recs:
+        row_idx = ws.max_row + 1
+        ws.cell(row=row_idx, column=1, value=r["ID"])
+        ws.cell(row=row_idx, column=2, value=r["Intersection"])
+        ws.cell(row=row_idx, column=3, value=str(r["Date"]) if r.get("Date") else None)
+        ws.cell(row=row_idx, column=4, value=str(r["Time of Day"]) if r.get("Time of Day") else None)
+        ws.cell(row=row_idx, column=5, value=r["Duration_Hours"])
+        ws.cell(row=row_idx, column=6, value=r["Consultant_Total"])
+        ws.cell(row=row_idx, column=7, value=r["Vision_Total"])
+        # Plain relative references, not [@Column] structured refs -- see note in write_data_tab.
+        ws.cell(row=row_idx, column=8, value=f"=(G{row_idx}-F{row_idx})/F{row_idx}")
+        ws.cell(row=row_idx, column=9, value=f"=ABS(H{row_idx})")
+        ws.cell(row=row_idx, column=10,
+                value=f"=SQRT(2*(G{row_idx}-F{row_idx})^2/(G{row_idx}+F{row_idx}))")
+        # Normalize to an hourly rate before computing GEH -- see note in consultant_data.py.
+        # Same formula as column J, just on totals divided by Duration_Hours (column E) first.
+        ws.cell(row=row_idx, column=11,
+                value=(f"=SQRT(2*((G{row_idx}/E{row_idx})-(F{row_idx}/E{row_idx}))^2/"
+                       f"((F{row_idx}/E{row_idx})+(G{row_idx}/E{row_idx})))"))
+
+    last_row = ws.max_row
+    for r in range(2, last_row + 1):
+        ws.cell(row=r, column=5).number_format = "0.0"
+        ws.cell(row=r, column=8).number_format = "0.0%"
+        ws.cell(row=r, column=9).number_format = "0.0%"
+        ws.cell(row=r, column=10).number_format = "0.00"
+        ws.cell(row=r, column=11).number_format = "0.00"
+
+    table_ref = f"A1:{get_column_letter(len(CONSULTANT_TABLE_COLS))}{last_row}"
+    table = Table(displayName="TMC_Consultant", ref=table_ref)
+    table.tableStyleInfo = TableStyleInfo(
+        name="TableStyleMedium2", showRowStripes=True, showFirstColumn=False,
+        showLastColumn=False, showColumnStripes=False,
+    )
+    ws.add_table(table)
+    ws.freeze_panes = "A2"
+    autosize(ws, len(CONSULTANT_TABLE_COLS))
+    return ws, last_row
+
+
+def add_geh_bar_chart(data_ws, dest_ws, title, first_row, last_row, anchor, name_col=3, geh_col=10):
     # Deliberately not using titles_from_data: for the 1st-Calibration block, the row
     # above first_row is the last Baseline data row, not a header, so a data-derived
     # title would silently mislabel the series using that row's GEH value.
@@ -179,8 +232,8 @@ def add_geh_bar_chart(data_ws, dest_ws, title, first_row, last_row, anchor):
     chart.title = title
     chart.y_axis.title = "GEH"
     chart.height, chart.width = 9, 20
-    data_ref = Reference(data_ws, min_col=10, min_row=first_row, max_row=last_row)
-    cats_ref = Reference(data_ws, min_col=3, min_row=first_row, max_row=last_row)
+    data_ref = Reference(data_ws, min_col=geh_col, min_row=first_row, max_row=last_row)
+    cats_ref = Reference(data_ws, min_col=name_col, min_row=first_row, max_row=last_row)
     series = Series(data_ref, title="GEH")
     chart.series.append(series)
     chart.set_categories(cats_ref)
@@ -188,14 +241,15 @@ def add_geh_bar_chart(data_ws, dest_ws, title, first_row, last_row, anchor):
     dest_ws.add_chart(chart, anchor)
 
 
-def add_scatter_chart(data_ws, dest_ws, title, first_row, last_row, anchor):
+def add_scatter_chart(data_ws, dest_ws, title, first_row, last_row, anchor,
+                       x_col=6, y_col=7, x_title="Manual Total", y_title="Vision Total"):
     scatter = ScatterChart()
     scatter.title = title
-    scatter.x_axis.title = "Manual Total"
-    scatter.y_axis.title = "Vision Total"
+    scatter.x_axis.title = x_title
+    scatter.y_axis.title = y_title
     scatter.height, scatter.width = 9, 12
-    xvalues = Reference(data_ws, min_col=6, min_row=first_row, max_row=last_row)
-    yvalues = Reference(data_ws, min_col=7, min_row=first_row, max_row=last_row)
+    xvalues = Reference(data_ws, min_col=x_col, min_row=first_row, max_row=last_row)
+    yvalues = Reference(data_ws, min_col=y_col, min_row=first_row, max_row=last_row)
     series = Series(yvalues, xvalues, title="Intersections")
     series.marker.symbol = "circle"
     series.graphicalProperties.line.noFill = True
@@ -279,6 +333,71 @@ def write_dashboard_tab(wb, baseline_block, calib_block):
     return ws
 
 
+def write_consultant_dashboard_tab(wb, last_row):
+    ws = wb.create_sheet("Consultant Dashboard")
+    ws.column_dimensions["A"].width = 32
+    ws.column_dimensions["B"].width = 16
+
+    title = ws.cell(row=1, column=1, value="Consultant vs. Vision Camera — Live KPIs")
+    title.font = Font(bold=True, size=13)
+    ws.merge_cells("A1:B1")
+
+    ws.cell(row=2, column=1, value=(
+        "A standalone third comparison, separate from the Manual-vs-Vision Baseline/1st Calibration "
+        "numbers, because Consultant counts are cumulative totals over long, variable windows (13-18 "
+        "hours) rather than fixed 15-minute windows. Every value below is a formula over the "
+        "TMC_Consultant table (Consultant Data tab).")).alignment = Alignment(wrap_text=True)
+    ws.merge_cells("A2:B2")
+    ws.row_dimensions[2].height = 42
+
+    header_row = 5
+    ws.cell(row=header_row, column=1, value="Metric")
+    ws.cell(row=header_row, column=2, value="Consultant")
+    style_header(ws, 2, row=header_row)
+
+    rows = [
+        ("Intersections with data", "=COUNTA(TMC_Consultant[ID])", "0"),
+        ("Mean % Difference", "=AVERAGE(TMC_Consultant[Pct_Diff])", "0.0%"),
+        ("Mean |% Difference|", "=AVERAGE(TMC_Consultant[Abs_Pct_Diff])", "0.0%"),
+        ("Mean GEH (as-collected)", "=AVERAGE(TMC_Consultant[GEH])", "0.00"),
+        ("% GEH<5 (as-collected)",
+         '=COUNTIF(TMC_Consultant[GEH],"<5")/COUNTA(TMC_Consultant[ID])', "0.0%"),
+        ("Mean GEH (hourly rate)", "=AVERAGE(TMC_Consultant[GEH_Hourly_Rate])", "0.00"),
+        ("% GEH<5 (hourly rate)",
+         '=COUNTIF(TMC_Consultant[GEH_Hourly_Rate],"<5")/COUNTA(TMC_Consultant[ID])', "0.0%"),
+        ("Mean count duration (hrs)", "=AVERAGE(TMC_Consultant[Duration_Hours])", "0.0"),
+    ]
+    r = header_row + 1
+    for label, formula, numfmt in rows:
+        ws.cell(row=r, column=1, value=label)
+        c2 = ws.cell(row=r, column=2, value=formula)
+        c2.number_format = numfmt
+        r += 1
+    autosize(ws, 2)
+
+    note = ws.cell(row=r + 1, column=1, value=(
+        "Why GEH runs so high here: GEH scales with sqrt(volume) for a fixed relative error. A 13-18 "
+        "hour count accumulates thousands of vehicles, so the same (or even better) % accuracy as the "
+        "15-minute Manual counts produces a much larger GEH -- a mechanical effect of count volume, not "
+        "evidence the Vision Camera is less accurate here. The conventional GEH<5 threshold was "
+        "calibrated for hourly volumes, so GEH_Hourly_Rate (each total divided by its own count duration "
+        "before computing GEH) is the fairer of the two bases above; even so, % Difference is the most "
+        "directly meaningful comparison metric for this dataset, since it doesn't depend on duration."))
+    note.alignment = Alignment(wrap_text=True)
+    ws.merge_cells(start_row=note.row, start_column=1, end_row=note.row, end_column=2)
+    ws.row_dimensions[note.row].height = 70
+
+    data_ws = wb["Consultant Data"]
+    add_geh_bar_chart(data_ws, ws, "Consultant: GEH by Intersection, as-collected (sorted)",
+                       2, last_row, f"D{header_row}", name_col=2, geh_col=10)
+    add_geh_bar_chart(data_ws, ws, "Consultant: GEH by Intersection, hourly rate (sorted)",
+                       2, last_row, f"D{header_row + 20}", name_col=2, geh_col=11)
+    add_scatter_chart(data_ws, ws, "Consultant vs. Vision Total",
+                       2, last_row, f"D{header_row + 40}",
+                       x_col=6, y_col=7, x_title="Consultant Total", y_title="Vision Total")
+    return ws
+
+
 def write_paired_tab(wb, baseline_df, calib_df, top_n=5):
     merged_ids = sorted(set(baseline_df["ID"]) & set(calib_df["ID"]))
     ws = wb.create_sheet("Paired Before-After")
@@ -352,6 +471,7 @@ def write_all_intersections_tab(wb, last_row_data):
 def main():
     baseline_df = pd.read_csv(FILE_MAP["Baseline"])
     calib_df = pd.read_csv(FILE_MAP["1st Calibration"])
+    consultant_df = pd.read_csv("consultant_data.csv")
 
     wb = Workbook()
     wb.remove(wb.active)
@@ -361,6 +481,8 @@ def main():
     write_dashboard_tab(wb, baseline_block, calib_block)
     write_paired_tab(wb, baseline_df, calib_df)
     write_all_intersections_tab(wb, data_ws.max_row)
+    consultant_ws, consultant_last_row = write_consultant_data_tab(wb, consultant_df)
+    write_consultant_dashboard_tab(wb, consultant_last_row)
 
     # Sheet creation order left us [Overview, Dashboard, Data, ...]; swap Data and
     # Dashboard so Data (the source table) reads right after Overview.
@@ -368,7 +490,8 @@ def main():
 
     out_path = "TMC_Vision_Accuracy_Dashboard.xlsx"
     wb.save(out_path)
-    print(f"Saved {out_path}: {n_baseline} Baseline rows, {n_calib} Calibration rows")
+    print(f"Saved {out_path}: {n_baseline} Baseline rows, {n_calib} Calibration rows, "
+          f"{len(consultant_df)} Consultant rows")
 
 
 if __name__ == "__main__":

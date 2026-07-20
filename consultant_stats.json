@@ -1,0 +1,15 @@
+{
+  "n_intersections": 35,
+  "mean_pct_diff": -0.10819912913676522,
+  "median_pct_diff": -0.09287598944591029,
+  "mean_abs_pct_diff": 0.15218717129359588,
+  "mean_geh": 23.424397109146128,
+  "median_geh": 12.934340124706738,
+  "pct_pass_geh5": 31.428571428571427,
+  "mean_geh_hourly_rate": 6.340532876998413,
+  "median_geh_hourly_rate": 3.1531685611322096,
+  "pct_pass_geh5_hourly_rate": 65.71428571428571,
+  "mean_duration_hours": 14.142857142857142,
+  "min_duration_hours": 13.0,
+  "max_duration_hours": 18.0
+}
