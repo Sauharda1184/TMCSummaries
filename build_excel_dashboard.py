@@ -200,9 +200,13 @@ def write_consultant_data_tab(wb, consultant_df):
                 value=f"=SQRT(2*(G{row_idx}-F{row_idx})^2/(G{row_idx}+F{row_idx}))")
         # Normalize to an hourly rate before computing GEH -- see note in consultant_data.py.
         # Same formula as column J, just on totals divided by Duration_Hours (column E) first.
+        # Guarded with IF(E="",...) because a handful of rows have a single timestamp instead
+        # of a time range (e.g. a Manual-style 15-min entry mixed into this tab), so Duration_Hours
+        # can't be parsed and is blank -- without the guard, dividing by a blank E produces
+        # #DIV/0! in that cell, which then poisons every AVERAGE()/COUNTIF() KPI on this column.
         ws.cell(row=row_idx, column=11,
-                value=(f"=SQRT(2*((G{row_idx}/E{row_idx})-(F{row_idx}/E{row_idx}))^2/"
-                       f"((F{row_idx}/E{row_idx})+(G{row_idx}/E{row_idx})))"))
+                value=(f'=IF(E{row_idx}="","",SQRT(2*((G{row_idx}/E{row_idx})-(F{row_idx}/E{row_idx}))^2/'
+                       f'((F{row_idx}/E{row_idx})+(G{row_idx}/E{row_idx}))))'))
 
     last_row = ws.max_row
     for r in range(2, last_row + 1):
