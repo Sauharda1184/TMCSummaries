@@ -256,6 +256,12 @@ def add_scatter_chart(data_ws, dest_ws, title, first_row, last_row, anchor,
     yvalues = Reference(data_ws, min_col=y_col, min_row=first_row, max_row=last_row)
     series = Series(yvalues, xvalues, title="Intersections")
     series.marker.symbol = "circle"
+    # Without an explicit size/fill, the marker renders as a near-invisible hairline
+    # dot in some viewers (confirmed via LibreOffice render) -- the noFill below only
+    # turns off the connecting line between points, not the marker itself.
+    series.marker.size = 7
+    series.marker.graphicalProperties.solidFill = "1F4E78"
+    series.marker.graphicalProperties.line.solidFill = "1F4E78"
     series.graphicalProperties.line.noFill = True
     scatter.series.append(series)
     dest_ws.add_chart(scatter, anchor)

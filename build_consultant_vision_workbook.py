@@ -24,8 +24,13 @@ SOURCE_FILE = "VisionTMCValidation.xlsm"
 SHEET_NAME = "CONSULTANT"
 OUT_PATH = "Consultant_Vision_Comparison.xlsx"
 
+# Excluded as statistical outliers disproportionately skewing the mean/GEH -- not
+# attributable to a specific data-quality issue (both rows are internally consistent).
+# Documented explicitly on the Overview tab rather than dropped silently.
+EXCLUDED_IDS = [8027600, 8009700, 8019100]
 
-def write_overview_tab(wb, stats):
+
+def write_overview_tab(wb, stats, excluded_df):
     ws = wb.create_sheet("Overview", 0)
     ws.column_dimensions["A"].width = 100
 
@@ -62,12 +67,21 @@ def write_overview_tab(wb, stats):
             "internal consistency (does the Total match the sum of its own approach totals?) before "
             "and after correction."
         )),
+        ("Excluded intersections", (
+            f"{len(excluded_df)} intersections were excluded from this workbook's data, KPIs, and "
+            "charts as statistical outliers disproportionately skewing the mean % Difference and GEH "
+            "-- this is not based on an identified data-quality issue with these specific rows (both "
+            "were checked and are internally consistent). Excluded: " +
+            "; ".join(f"{r.Intersection} (% Diff {r.Pct_Diff*100:.1f}%, GEH hourly rate "
+                      f"{r.GEH_Hourly_Rate:.1f})" for r in excluded_df.itertuples()) + "."
+        )),
         ("Headline numbers", (
             f"Mean |% Difference|: {stats['mean_abs_pct_diff']*100:.1f}%. Mean GEH as-collected: "
             f"{stats['mean_geh']:.2f} (median {stats['median_geh']:.2f}). Mean GEH hourly rate: "
             f"{stats['mean_geh_hourly_rate']:.2f} (median {stats['median_geh_hourly_rate']:.2f}). "
             f"% of intersections passing GEH<5 on the hourly-rate basis: "
-            f"{stats['pct_pass_geh5_hourly_rate']:.1f}%."
+            f"{stats['pct_pass_geh5_hourly_rate']:.1f}%. (After excluding the "
+            f"{len(excluded_df)} outliers noted above.)"
         )),
     ]
 
@@ -119,17 +133,21 @@ def write_followups_tab(wb, df, top_n=10):
 
 def main():
     wb_src = openpyxl.load_workbook(SOURCE_FILE, data_only=True, keep_vba=True)
-    df = extract_sheet(wb_src[SHEET_NAME])
+    full_df = extract_sheet(wb_src[SHEET_NAME])
+
+    excluded_df = full_df[full_df["ID"].isin(EXCLUDED_IDS)].reset_index(drop=True)
+    df = full_df[~full_df["ID"].isin(EXCLUDED_IDS)].reset_index(drop=True)
     stats = summarize(df)
 
-    print(f"Extracted {stats['n_intersections']} intersections from {SOURCE_FILE}!{SHEET_NAME}")
+    print(f"Extracted {len(full_df)} intersections from {SOURCE_FILE}!{SHEET_NAME}, "
+          f"excluded {len(excluded_df)} as outliers -> {stats['n_intersections']} remain")
     print(f"Mean |% Diff|: {stats['mean_abs_pct_diff']:.3f}  Mean GEH (as-collected): {stats['mean_geh']:.2f}  "
           f"Mean GEH (hourly rate): {stats['mean_geh_hourly_rate']:.2f}")
 
     wb = Workbook()
     wb.remove(wb.active)
 
-    write_overview_tab(wb, stats)
+    write_overview_tab(wb, stats, excluded_df)
     data_ws, last_row = write_consultant_data_tab(wb, df)
     write_consultant_dashboard_tab(wb, last_row)
     write_followups_tab(wb, df)
